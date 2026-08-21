@@ -49,9 +49,9 @@ Setup for your development environment should be relatively simple:
 	- MacOS: e.g. `brew install node`
 	- Windows: e.g. `winget install OpenJS.NodeJS`
  3. Extract an appropriate [release of nest-libs](https://github.com/15-466/nest-libs/releases) to a sibling of this folder:
-	- Linux: https://github.com/15-466/nest-libs/releases/download/v0.14/nest-libs-linux-v0.14.tar.gz
-	- MacOS: https://github.com/15-466/nest-libs/releases/download/v0.14/nest-libs-macos-v0.14.tar.gz
-	- Windows: https://github.com/15-466/nest-libs/releases/download/v0.14/nest-libs-windows-v0.14.zip
+	- Linux: https://github.com/15-466/nest-libs/releases/download/v0.15/nest-libs-linux-v0.15.tar.gz
+	- MacOS: https://github.com/15-466/nest-libs/releases/download/v0.15/nest-libs-macos-v0.15.tar.gz
+	- Windows: https://github.com/15-466/nest-libs/releases/download/v0.15/nest-libs-windows-v0.15.zip
 
 Once you are finished, your directory tree should looks something like this:
 
