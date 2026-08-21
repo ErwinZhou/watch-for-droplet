@@ -200,7 +200,7 @@ function init_maek() {
 		CPPFlags: [], //extra flags for c++ compiler
 		LINK: [], //the linker and any flags to start with (set below, per-OS)
 		LINKLibs: [], //extra -L and -l flags for linker
-	}
+	};
 
 	if (maek.OS === 'windows') {
 		DEFAULT_OPTIONS.CPP = ['cl.exe', '/nologo', '/EHsc', '/Z7', '/std:c++20', '/W4', '/WX', '/MD'];
@@ -213,6 +213,7 @@ function init_maek() {
 		DEFAULT_OPTIONS.CPP = ['clang++', '-std=c++20', '-Wall', '-Werror', '-g'];
 		DEFAULT_OPTIONS.LINK = ['clang++', '-std=c++20', '-Wall', '-Werror', '-g'];
 	}
+	maek.DEFAULT_OPTIONS = DEFAULT_OPTIONS; //make available for custom rules
 
 	//any settings here override 'DEFAULT_OPTIONS':
 	maek.options = Object.assign({}, DEFAULT_OPTIONS); //shallow copy of DEFAULT_OPTIONS in case you want to console.log(maek.options) to check settings.
@@ -233,6 +234,7 @@ function init_maek() {
 		}
 		return combined;
 	}
+	maek.combineOptions = combineOptions; //make available for custom rules
 
 	//tasks is a map from targets -> tasks:
 	maek.tasks = {};
@@ -521,6 +523,7 @@ function init_maek() {
 		}
 
 	}
+	maek.run = run; //make available for custom rules
 
 	let hashCacheHits = 0;
 	let hashCache = {};
@@ -582,6 +585,10 @@ function init_maek() {
 			PATH = process.env.PATH.split(';');
 		} else {
 			PATH = process.env.PATH.split(':');
+		}
+		//handle './' or 'path/to/command' commands:
+		if (command[0].indexOf('/') !== -1) {
+			PATH = ['.'];
 		}
 		for (const prefix of PATH) {
 			const exe = osPath.resolve(prefix, command[0]);
