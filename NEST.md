@@ -43,7 +43,7 @@ Setup for your development environment should be relatively simple:
  1. Install one of our target C++ compilers:
 	- Linux: g++
 	- MacOS: clang++ (from XCode). From the terminal: `xcode-select --install`
-	- Windows: Visual Studio Community 2022 (or just the build tools). From the terminal: `winget install Microsoft.VisualStudio.2022.Community` (or `Microsoft.VisualStudio.2022.BuildTools`)
+	- Windows: Visual Studio Community 2026 (or just the build tools). From the terminal: `winget install Microsoft.VisualStudio.2026.Community` (or `Microsoft.VisualStudio.2026.BuildTools`)
  2. Install [node](https://node.js):
 	- Linux: e.g. `sudo apt-get install node`
 	- MacOS: e.g. `brew install node`
@@ -88,7 +88,7 @@ Here are a few worthwhile variations:
   $ node Maekfile.js -v
 ```
 
-*Windows Note:* you will need to use a command prompt with the visual studio tools and variables configured. The "x64 Native Tools Command Prompt for VS2022" start menu option provides this option.
+*Windows Note:* you will need to use a command prompt with the visual studio tools and variables configured. The "x64 Native Tools Command Prompt for VS2026" start menu option provides this option.
 
 ## A Word About Github Actions
 
