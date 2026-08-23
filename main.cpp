@@ -133,6 +133,10 @@ int main(int argc, char **argv) {
 		{ //(1) process any events that are pending
 			static SDL_Event evt;
 			while (SDL_PollEvent(&evt)) {
+				//ignore key repeat:
+				if (evt.type == SDL_EVENT_KEY_DOWN && evt.key.repeat) {
+					continue;
+				}
 				//handle resizing:
 				if (evt.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
 					on_resize();
