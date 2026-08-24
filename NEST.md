@@ -43,7 +43,7 @@ Setup for your development environment should be relatively simple:
  1. Install one of our target C++ compilers:
 	- Linux: g++
 	- MacOS: clang++ (from XCode). From the terminal: `xcode-select --install`
-	- Windows: Visual Studio Community 2026 (or just the build tools). From the terminal: `winget install Microsoft.VisualStudio.2026.Community` (or `Microsoft.VisualStudio.2026.BuildTools`)
+	- Windows: Visual Studio Community 2026 (or just the build tools). From the terminal: `winget install Microsoft.VisualStudio.Community` (or `Microsoft.VisualStudio.BuildTools`)
  2. Install [node](https://node.js):
 	- Linux: e.g. `sudo apt-get install node`
 	- MacOS: e.g. `brew install node`
