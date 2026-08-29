@@ -85,6 +85,41 @@ int32_t find_palette(std::vector< glm::u8vec4 > const &colors, std::vector< uint
 	return -1;
 }
 
+//pack the 8x8 block at tile (tx,ty) into a PPU466::Tile using `pal`.
+// (assumes every pixel in the block appears in `pal` -- check with find_palette first.)
+PPU466::Tile pack_tile(std::vector< glm::u8vec4 > const &pixels, glm::uvec2 const &size,
+                       uint32_t tx, uint32_t ty, Palette const &pal) {
+	PPU466::Tile tile;
+	for (uint32_t y = 0; y < 8; ++y) {
+		uint8_t bit0 = 0, bit1 = 0;
+		for (uint32_t x = 0; x < 8; ++x) {
+			glm::u8vec4 c = pixels[(tx*8+x) + size.x*(ty*8+y)];
+			uint32_t idx = 0;
+			for (; idx < 4; ++idx) if (pal[idx] == c) break;
+			if (idx & 1) bit0 |= (1 << x);
+			if (idx & 2) bit1 |= (1 << x);
+		}
+		tile.bit0[y] = bit0;
+		tile.bit1[y] = bit1;
+	}
+	return tile;
+}
+
+//gather the distinct colors used by the 8x8 block at tile (tx,ty):
+std::vector< glm::u8vec4 > tile_colors(std::vector< glm::u8vec4 > const &pixels, glm::uvec2 const &size,
+                                       uint32_t tx, uint32_t ty) {
+	std::vector< glm::u8vec4 > used;
+	for (uint32_t y = 0; y < 8; ++y) {
+		for (uint32_t x = 0; x < 8; ++x) {
+			glm::u8vec4 c = pixels[(tx*8+x) + size.x*(ty*8+y)];
+			bool seen = false;
+			for (auto const &u : used) if (u == c) { seen = true; break; }
+			if (!seen) used.push_back(c);
+		}
+	}
+	return used;
+}
+
 //write a byte as a readable 8-bit literal for debugging, e.g. 0b01111110
 std::string binary_literal(uint8_t b) {
 	std::string s = "0b";
@@ -213,6 +248,86 @@ int main(int argc, char **argv) {
 		out << palette_line << "}};\n\n";
 	} //end asset
 
-	std::cout << "wrote asset.hpp" << std::endl;
+	{ //background: unlike sprites, this fills ppu.background[] -- a 64x60 grid of
+	  // tile-index + palette-index. Identical 8x8 blocks are deduplicated so a
+	  // 3840-cell map only costs a handful of tile_table slots.
+		const std::string path = "assets/space-earth-background-preview-512-480.png";
+		const uint8_t background_palette = 0;
+
+		glm::uvec2 size;
+		std::vector< glm::u8vec4 > pixels;
+		load_png(path, &size, &pixels, OriginLocation::LowerLeftOrigin);
+
+		if (size.x != PPU466::BackgroundWidth * 8 || size.y != PPU466::BackgroundHeight * 8) {
+			std::cerr << "ERROR: " << path << " is " << size.x << "x" << size.y
+			          << ", expected " << (PPU466::BackgroundWidth*8) << "x" << (PPU466::BackgroundHeight*8)
+			          << "." << std::endl;
+			return 1;
+		}
+
+		//dedup tiles; unique_tiles[i] gets tile_table slot (base + i):
+		std::vector< PPU466::Tile > unique_tiles;
+		std::vector< uint16_t > map(PPU466::BackgroundWidth * PPU466::BackgroundHeight, 0);
+
+		for (uint32_t ty = 0; ty < PPU466::BackgroundHeight; ++ty) {
+			for (uint32_t tx = 0; tx < PPU466::BackgroundWidth; ++tx) {
+				std::vector< glm::u8vec4 > used = tile_colors(pixels, size, tx, ty);
+				if (find_palette(used, {background_palette}) < 0) {
+					std::cerr << "ERROR: " << path << " tile (" << tx << "," << ty << ") "
+					          << "uses " << used.size() << " colors that don't fit palette "
+					          << uint32_t(background_palette) << "." << std::endl;
+					return 1;
+				}
+				PPU466::Tile tile = pack_tile(pixels, size, tx, ty, palette_table[background_palette]);
+
+				uint32_t slot = 0;
+				for (; slot < unique_tiles.size(); ++slot) {
+					if (unique_tiles[slot].bit0 == tile.bit0 && unique_tiles[slot].bit1 == tile.bit1) break;
+				}
+				if (slot == unique_tiles.size()) unique_tiles.push_back(tile);
+
+				map[tx + PPU466::BackgroundWidth*ty] = uint16_t((next_tile_index + slot) | (background_palette << 8));
+			}
+		}
+
+		if (next_tile_index + unique_tiles.size() > 256) {
+			std::cerr << "ERROR: ran out of tile_table slots for background ("
+			          << unique_tiles.size() << " unique tiles needed)." << std::endl;
+			return 1;
+		}
+
+		out << "//background: " << PPU466::BackgroundWidth << "x" << PPU466::BackgroundHeight
+		    << " cells, " << unique_tiles.size() << " unique tiles, "
+		    << "occupies tile_table[" << next_tile_index << ".." << (next_tile_index + unique_tiles.size() - 1) << "]\n";
+		out << "const uint8_t background_tile_index = " << next_tile_index << ";\n";
+		out << "const std::array< PPU466::Tile, " << unique_tiles.size() << " > background_tiles = {{\n";
+		for (uint32_t i = 0; i < unique_tiles.size(); ++i) {
+			out << "\t{ //unique tile " << i << " -> tile_table[" << (next_tile_index + i) << "]\n";
+			out << "\t\t{ //bit0\n";
+			for (uint32_t y = 0; y < 8; ++y) out << "\t\t\t" << binary_literal(unique_tiles[i].bit0[y]) << ",\n";
+			out << "\t\t},\n";
+			out << "\t\t{ //bit1\n";
+			for (uint32_t y = 0; y < 8; ++y) out << "\t\t\t" << binary_literal(unique_tiles[i].bit1[y]) << ",\n";
+			out << "\t\t},\n";
+			out << "\t},\n";
+		}
+		out << "}};\n";
+
+		//the map itself: copy straight into ppu.background. One source line per background row,
+		// row 0 = bottom (matching PPU466's background origin).
+		out << "const std::array< uint16_t, " << map.size() << " > background_map = {{\n";
+		for (uint32_t ty = 0; ty < PPU466::BackgroundHeight; ++ty) {
+			out << "\t";
+			for (uint32_t tx = 0; tx < PPU466::BackgroundWidth; ++tx) {
+				out << map[tx + PPU466::BackgroundWidth*ty] << ",";
+			}
+			out << " //row " << ty << "\n";
+		}
+		out << "}};\n\n";
+
+		next_tile_index += uint32_t(unique_tiles.size());
+	}
+
+	std::cout << "wrote asset.hpp (" << next_tile_index << " of 256 tile_table slots used)" << std::endl;
 	return 0;
 }
