@@ -111,11 +111,64 @@ if (maek.OS === 'windows') {
 // cppFile: name of c++ file to compile
 // objFileBase (optional): base name object file to produce (if not supplied, set to options.objDir + '/' + cppFile without the extension)
 //returns objFile: objFileBase + a platform-dependant suffix ('.o' or '.obj')
+//----------------------------------------------------------------------
+//asset pipeline: extract_sprite reads the PNGs in assets/ and writes asset.hpp
+// (the tile/palette/background data that PlayMode.cpp #includes).
+// Run just this step with:  node Maekfile.js :assets
+
+const asset_pngs = [
+	'assets/droplet-16-16.png',
+	'assets/human-spacecraft-48-24.png',
+	'assets/small-star-8-8.png',
+	'assets/bright-star-16-16.png',
+	'assets/meteorite-small-16-16.png',
+	'assets/meteorite-large-24-24.png',
+	'assets/space-earth-background-preview-512-480.png',
+];
+
+//shared by the game and by extract_sprite:
+const load_save_png_obj = maek.CPP('load_save_png.cpp');
+
+//NOTE: extract_sprite links load_save_png but *not* PPU466.cpp -- PPU466.cpp has
+// Load<> globals that touch OpenGL at static-init time, and this tool has no GL context.
+const extract_sprite_exe = maek.LINK([
+	maek.CPP('extract_sprite.cpp'),
+	load_save_png_obj,
+], 'extract_sprite');
+
+//run the tool to (re)generate asset.hpp whenever the tool or any source PNG changes:
+const asset_hpp = (() => {
+	const target = 'asset.hpp';
+	const command = [`./${extract_sprite_exe}`];
+	const task = async () => {
+		await maek.run(command, `ASSETS ${target}`, async () => {
+			return {
+				read: [extract_sprite_exe, ...asset_pngs],
+				written: [target],
+			};
+		});
+	};
+	task.depends = [extract_sprite_exe, ...asset_pngs];
+	task.label = `ASSETS ${target}`;
+	maek.tasks[target] = task;
+	return target;
+})();
+
+//abstract target so 'node Maekfile.js :assets' just regenerates asset.hpp:
+maek.tasks[':assets'] = (() => {
+	const task = async () => { /* nothing to do; depends does the work */ };
+	task.depends = [asset_hpp];
+	task.label = `ASSETS :assets`;
+	return task;
+})();
+
+//----------------------------------------------------------------------
+
 const game_objs = [
-	maek.CPP('PlayMode.cpp'),
+	maek.CPP('PlayMode.cpp', undefined, { depends: [asset_hpp] }),
 	maek.CPP('PPU466.cpp'),
 	maek.CPP('main.cpp'),
-	maek.CPP('load_save_png.cpp'),
+	load_save_png_obj,
 	maek.CPP('Load.cpp'),
 	maek.CPP('data_path.cpp'),
 	maek.CPP('Mode.cpp'),
