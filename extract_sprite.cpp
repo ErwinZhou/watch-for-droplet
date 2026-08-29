@@ -192,14 +192,16 @@ int main(int argc, char **argv) {
 
 				//emit one Tile, laid out like PlayMode.cpp's hand-written tiles:
 				out << "\t{ //tile (" << tx << "," << ty << "), palette " << pal_index << "\n";
+				//NOTE: rows go in storage order (element 0 = BOTTOM row, per PPU466.hpp),
+				// so these read bottom-up -- i.e. upside down compared to the source art.
 				out << "\t\t{ //bit0\n";
-				for (uint32_t y = 8; y > 0; --y) { //top row first, so it reads like the picture
-					out << "\t\t\t" << binary_literal(tile.bit0[y-1]) << ",\n";
+				for (uint32_t y = 0; y < 8; ++y) {
+					out << "\t\t\t" << binary_literal(tile.bit0[y]) << ",\n";
 				}
 				out << "\t\t},\n";
 				out << "\t\t{ //bit1\n";
-				for (uint32_t y = 8; y > 0; --y) {
-					out << "\t\t\t" << binary_literal(tile.bit1[y-1]) << ",\n";
+				for (uint32_t y = 0; y < 8; ++y) {
+					out << "\t\t\t" << binary_literal(tile.bit1[y]) << ",\n";
 				}
 				out << "\t\t},\n";
 				out << "\t},\n";
