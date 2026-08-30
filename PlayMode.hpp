@@ -26,8 +26,24 @@ struct PlayMode : Mode {
 	//some weird background animation:
 	float background_fade = 0.0f;
 
-	//player position:
-	glm::vec2 player_at = glm::vec2(0.0f);
+
+	//----- player state -----
+	enum class Speed {
+		Normal,
+		Accelerated,
+		Lightspeed
+	};
+	struct Player {
+		glm::vec2 player_at = glm::vec2(60.0f, 150.0f);
+		Speed player_speed = Speed::Normal;
+	} droplet;
+
+	//----- NPC state -----
+	struct Spacecraft {
+		glm::vec2 ship_at = glm::vec2(0.0f);
+		Speed ship_speed = Speed::Accelerated;
+	} spacecraft;
+
 
 	//----- drawing handled by PPU466 -----
 

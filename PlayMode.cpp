@@ -46,9 +46,6 @@ PlayMode::PlayMode() {
 		              "generated map covers the whole background grid.");
 		std::copy(background_map.begin(), background_map.end(), ppu.background.begin());
 	}
-
-	//start the droplet somewhere visible:
-	player_at = glm::vec2(120.0f, 150.0f);
 }
 
 PlayMode::~PlayMode() {
@@ -97,10 +94,10 @@ void PlayMode::update(float elapsed) {
 	//no game logic yet -- arrow keys just move the droplet so the art can be looked at.
 
 	constexpr float PlayerSpeed = 30.0f;
-	if (left.pressed) player_at.x -= PlayerSpeed * elapsed;
-	if (right.pressed) player_at.x += PlayerSpeed * elapsed;
-	if (down.pressed) player_at.y -= PlayerSpeed * elapsed;
-	if (up.pressed) player_at.y += PlayerSpeed * elapsed;
+	if (left.pressed) droplet.player_at.x -= PlayerSpeed * elapsed;
+	if (right.pressed) droplet.player_at.x += PlayerSpeed * elapsed;
+	if (down.pressed) droplet.player_at.y -= PlayerSpeed * elapsed;
+	if (up.pressed) droplet.player_at.y += PlayerSpeed * elapsed;
 
 	//reset button press counters:
 	left.downs = 0;
@@ -118,8 +115,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//background tiles + map were installed once in the constructor; scrolling just moves
 	// the window over them. Half the player's speed, so the world drifts behind the droplet.
 	ppu.background_position = glm::ivec2(
-		int32_t(-0.5f * player_at.x),
-		int32_t(-0.5f * player_at.y)
+		int32_t(-0.5f * droplet.player_at.x),
+		int32_t(-0.5f * droplet.player_at.y)
 	);
 
 	{ //sprites: park all 64 offscreen, then place the ones we want to look at.
@@ -148,7 +145,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		place(droplet_tile_index, droplet_tile_palettes.data(),
 		      droplet_tiles_x, droplet_tiles_y,
-		      glm::ivec2(int32_t(player_at.x), int32_t(player_at.y)));
+		      glm::ivec2(int32_t(droplet.player_at.x), int32_t(droplet.player_at.y)));
 
 		place(human_spacecraft_tile_index, human_spacecraft_tile_palettes.data(),
 		      human_spacecraft_tiles_x, human_spacecraft_tiles_y, glm::ivec2(96, 64));
