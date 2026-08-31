@@ -15,6 +15,11 @@ struct PlayMode : Mode {
 	virtual void update(float elapsed) override;
 	virtual void draw(glm::uvec2 const &drawable_size) override;
 
+	//----- units -----
+	// All game state below is in PIXELS, stored as float
+	// Tiles and uint8_t appear only at the PPU boundary
+	static constexpr float TileSize = 8.0f; //one tile is 8x8 pixels
+
 	//----- game state -----
 
 	//input tracking:

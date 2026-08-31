@@ -33,16 +33,19 @@ PlayMode::PlayMode() {
 		};
 
 		load_tiles(droplet_tile_index,          droplet_tiles.data(),          droplet_tiles.size());
-		droplet.width = droplet_tiles_x * 8;
-		droplet.height = droplet_tiles_y * 8;
 		load_tiles(human_spacecraft_tile_index, human_spacecraft_tiles.data(), human_spacecraft_tiles.size());
-		ship.width = human_spacecraft_tiles_x * 8;
-		ship.height = human_spacecraft_tiles_y * 8;
 		load_tiles(star_small_tile_index,       star_small_tiles.data(),       star_small_tiles.size());
 		load_tiles(star_bright_tile_index,      star_bright_tiles.data(),      star_bright_tiles.size());
 		load_tiles(meteorite_small_tile_index,  meteorite_small_tiles.data(),  meteorite_small_tiles.size());
 		load_tiles(meteorite_large_tile_index,  meteorite_large_tiles.data(),  meteorite_large_tiles.size());
 		load_tiles(background_tile_index,       background_tiles.data(),       background_tiles.size());
+	}
+
+	{ //entity sizes: tiles -> pixels, derived from the asset pipeline
+		droplet.width  = float(droplet_tiles_x) * TileSize;          //2 tiles -> 16 px
+		droplet.height = float(droplet_tiles_y) * TileSize;          //2 tiles -> 16 px
+		ship.width     = float(human_spacecraft_tiles_x) * TileSize; //6 tiles -> 48 px
+		ship.height    = float(human_spacecraft_tiles_y) * TileSize; //3 tiles -> 24 px
 	}
 
 	{ //background: the generated map is already in ppu.background's packed format.
@@ -67,7 +70,7 @@ float PlayMode::get_speed(Speed speed) {
 	case Speed::Lightspeed:
 		return 120.0f;
 	default:
-		assert("Speed undefined.");
+		assert(0 && "Speed undefined.");
 		break;
 	}
 }
@@ -83,9 +86,9 @@ void PlayMode::Player::speed_down(bool all_the_way) {
 }
 
 void PlayMode::clamp_to_screen(glm::vec2 &at, float w, float h) {
-	//avoid teleportation across screens, cap them there
-	at.x = std::max(0.0f, std::min(float(PPU466::BackgroundWidth) - w, at.x));
-	at.y = std::max(0.0f, std::min(float(PPU466::BackgroundHeight) - h, at.y));
+	//avoid teleportation by avoid player/npc wrapping up
+	at.x = std::max(0.0f, std::min(float(PPU466::ScreenWidth)  - w, at.x));
+	at.y = std::max(0.0f, std::min(float(PPU466::ScreenHeight) - h, at.y));
 }
 
 //--------------------------------------------------------------
