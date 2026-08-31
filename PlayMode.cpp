@@ -273,6 +273,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	//round is over: freeze everything, draw() shows the result colour.
+	if (won || lost) {
+		left.downs = right.downs = up.downs = down.downs = 0;
+		return;
+	}
 
 	{
 		//Player logic
@@ -299,13 +304,46 @@ void PlayMode::update(float elapsed) {
 		// Pickup logic
 		update_pickups();
 	}
+
+	{
+		// Win: catch the ship. Lose: run out of time.
+		if (overlap(droplet.droplet_at, droplet.width, droplet.height,
+		            ship.ship_at, ship.width, ship.height)) {
+			won = true;
+		}
+
+		time_remaining -= elapsed;
+		if (time_remaining <= 0.0f) {
+			time_remaining = 0.0f;
+			if (!won) lost = true;
+		}
+	}
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//--- set ppu state based on game state ---
 
-	//deep space; shows through wherever background tiles are transparent:
 	ppu.background_color = glm::u8vec3(0x05, 0x08, 0x16);
+
+	//round result: re-tint the background palette. background_color alone would not show,
+	// since every background tile is fully opaque and the map covers the whole grid.
+	if (won) {
+		ppu.palette_table[0] = {
+			glm::u8vec4(0x06, 0x2a, 0x14, 0xff),
+			glm::u8vec4(0x7d, 0xfc, 0xa0, 0xff),
+			glm::u8vec4(0x16, 0x70, 0x3c, 0xff),
+			glm::u8vec4(0x5c, 0xc0, 0x7b, 0xff),
+		};
+	} else if (lost) {
+		ppu.palette_table[0] = {
+			glm::u8vec4(0x2a, 0x06, 0x0a, 0xff),
+			glm::u8vec4(0xfc, 0x7d, 0x88, 0xff),
+			glm::u8vec4(0x78, 0x14, 0x1e, 0xff),
+			glm::u8vec4(0xc0, 0x5c, 0x60, 0xff),
+		};
+	} else {
+		ppu.palette_table[0] = asset_palettes[0];
+	}
 
 	//background tiles + map were installed once in the constructor; scrolling just moves
 	// the window over them. Half the player's speed, so the world drifts behind the droplet.

@@ -81,6 +81,12 @@ struct PlayMode : Mode {
 	};
 	static PickupArt art_for(Pickup::Kind kind);
 
+	//----- round state -----
+	static constexpr float RoundSeconds = 60.0f;
+	float time_remaining = RoundSeconds;
+	bool won = false;
+	bool lost = false;
+
 	//deterministic
 	// The answer to life the universe and everything: 42
 	std::mt19937 mt = std::mt19937(0x2a);
