@@ -79,6 +79,7 @@ PlayMode::~PlayMode() {
 //--------------------------------------------------------------
 //helper functions
 float PlayMode::get_speed(Speed speed) {
+	//no default: case, so a new Speed makes the compiler warn about the missing case here.
 	switch (speed)
 	{
 	case Speed::Normal:
@@ -87,10 +88,10 @@ float PlayMode::get_speed(Speed speed) {
 		return 75.0f;
 	case Speed::Lightspeed:
 		return 120.0f;
-	default:
-		assert(0 && "Speed undefined.");
-		break;
 	}
+	//unreachable, but every control path must return a value (MSVC C4715).
+	assert(0 && "Speed undefined.");
+	return 40.0f;
 }
 void PlayMode::Player::speed_up(bool all_the_way) {
 	if (all_the_way) { droplet_speed = Speed::Lightspeed; return; }
@@ -170,10 +171,10 @@ PlayMode::PickupArt PlayMode::art_for(Pickup::Kind kind) {
 		art = {meteorite_large_tile_index, meteorite_large_tile_palettes.data(),
 		       meteorite_large_tiles_x, meteorite_large_tiles_y, 0.0f, 0.0f};
 		break;
-	default:
-		assert(0 && "Pickup kind undefined.");
-		break;
 	}
+	//no default: case above, so a new Kind warns at compile time instead of reaching
+	// place() with a null palette pointer.
+	assert(art.palettes != nullptr && "Pickup kind undefined.");
 	art.width  = float(art.tiles_x) * TileSize;
 	art.height = float(art.tiles_y) * TileSize;
 	return art;
