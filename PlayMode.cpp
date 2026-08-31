@@ -49,6 +49,21 @@ PlayMode::PlayMode() {
 		ship.height    = float(human_spacecraft_tiles_y) * TileSize; //3 tiles -> 24 px
 	}
 
+	{ //pickups: fixed composition keeps the sprite cost constant and provable.
+		constexpr uint32_t FixedSprites  = 4 + 18; //droplet + ship
+		constexpr uint32_t PickupSprites = 2*1 + 1*4 + 6*4 + 1*9;
+		static_assert(FixedSprites + PickupSprites <= 64, "sprite budget exceeded");
+
+		uint32_t i = 0;
+		for (uint32_t n = 0; n < 2; ++n) pickups[i++].kind = Pickup::Kind::SmallStar;
+		pickups[i++].kind = Pickup::Kind::BrightStar;
+		for (uint32_t n = 0; n < 6; ++n) pickups[i++].kind = Pickup::Kind::SmallMeteorite;
+		pickups[i++].kind = Pickup::Kind::LargeMeteorite;
+		assert(i == pickups.size() && "composition fills the pool exactly.");
+
+		for (auto &p : pickups) respawn(p);
+	}
+
 	{ //background: the generated map is already in ppu.background's packed format.
 		static_assert(background_map.size() == PPU466::BackgroundWidth * PPU466::BackgroundHeight,
 		              "generated map covers the whole background grid.");
@@ -123,6 +138,93 @@ void PlayMode::update_ship(float elapsed) {
 	if (ship.ship_at.y > max_y) { ship.ship_at.y = max_y; ship.direction.y = std::min(0.0f, ship.direction.y); }
 }
 
+PlayMode::PickupArt PlayMode::art_for(Pickup::Kind kind) {
+	PickupArt art;
+	switch (kind) {
+	case Pickup::Kind::SmallStar:
+		art = {star_small_tile_index, star_small_tile_palettes.data(),
+		       star_small_tiles_x, star_small_tiles_y, 0.0f, 0.0f};
+		break;
+	case Pickup::Kind::BrightStar:
+		art = {star_bright_tile_index, star_bright_tile_palettes.data(),
+		       star_bright_tiles_x, star_bright_tiles_y, 0.0f, 0.0f};
+		break;
+	case Pickup::Kind::SmallMeteorite:
+		art = {meteorite_small_tile_index, meteorite_small_tile_palettes.data(),
+		       meteorite_small_tiles_x, meteorite_small_tiles_y, 0.0f, 0.0f};
+		break;
+	case Pickup::Kind::LargeMeteorite:
+		art = {meteorite_large_tile_index, meteorite_large_tile_palettes.data(),
+		       meteorite_large_tiles_x, meteorite_large_tiles_y, 0.0f, 0.0f};
+		break;
+	default:
+		assert(0 && "Pickup kind undefined.");
+		break;
+	}
+	art.width  = float(art.tiles_x) * TileSize;
+	art.height = float(art.tiles_y) * TileSize;
+	return art;
+}
+
+void PlayMode::respawn(Pickup &p) {
+	PickupArt art = art_for(p.kind);
+	float max_x = float(PPU466::ScreenWidth) - art.width;
+	float max_y = float(PPU466::ScreenHeight) - art.height;
+
+	//keep clear of both entities so a respawn can't be eaten on the same frame:
+	constexpr float ClearRadius = 40.0f;
+	for (uint32_t tries = 0; tries < 32; ++tries) {
+		p.at.x = float(mt() % (uint32_t(max_x) + 1));
+		p.at.y = float(mt() % (uint32_t(max_y) + 1));
+		glm::vec2 center = p.at + glm::vec2(art.width, art.height) * 0.5f;
+		glm::vec2 d = center - (droplet.droplet_at + glm::vec2(droplet.width, droplet.height) * 0.5f);
+		glm::vec2 s = center - (ship.ship_at + glm::vec2(ship.width, ship.height) * 0.5f);
+		if (glm::length(d) > ClearRadius && glm::length(s) > ClearRadius) return;
+	}
+	//gave up: last position stands.
+}
+
+void PlayMode::apply_pickup(Pickup::Kind kind, Speed &speed) {
+	//ship methods cap at Accelerated; player methods do not.
+	bool is_player = (&speed == &droplet.droplet_speed);
+	switch (kind) {
+	case Pickup::Kind::SmallStar:
+		if (is_player) droplet.speed_up(false); else ship.speed_up();
+		break;
+	case Pickup::Kind::BrightStar:
+		if (is_player) droplet.speed_up(true); else ship.speed_up();
+		break;
+	case Pickup::Kind::SmallMeteorite:
+		if (is_player) droplet.speed_down(false); else ship.speed_down();
+		break;
+	case Pickup::Kind::LargeMeteorite:
+		if (is_player) droplet.speed_down(true); else ship.speed_down();
+		break;
+	default:
+		assert(0 && "Pickup kind undefined.");
+		break;
+	}
+}
+
+//AABB overlap:
+static bool overlap(glm::vec2 a, float aw, float ah, glm::vec2 b, float bw, float bh) {
+	return a.x < b.x + bw && b.x < a.x + aw
+	    && a.y < b.y + bh && b.y < a.y + ah;
+}
+
+void PlayMode::update_pickups() {
+	for (auto &p : pickups) {
+		PickupArt art = art_for(p.kind);
+		if (overlap(droplet.droplet_at, droplet.width, droplet.height, p.at, art.width, art.height)) {
+			apply_pickup(p.kind, droplet.droplet_speed);
+			respawn(p);
+		} else if (overlap(ship.ship_at, ship.width, ship.height, p.at, art.width, art.height)) {
+			apply_pickup(p.kind, ship.ship_speed);
+			respawn(p);
+		}
+	}
+}
+
 void PlayMode::clamp_to_screen(glm::vec2 &at, float w, float h) {
 	//avoid teleportation by avoid player/npc wrapping up
 	at.x = std::max(0.0f, std::min(float(PPU466::ScreenWidth)  - w, at.x));
@@ -180,6 +282,12 @@ void PlayMode::update(float elapsed) {
 		if (down.pressed) droplet.droplet_at.y -= player_speed * elapsed;
 		if (up.pressed) droplet.droplet_at.y += player_speed * elapsed;
 		clamp_to_screen(droplet.droplet_at, droplet.width, droplet.height);
+		
+		//reset button press counters:
+		left.downs = 0;
+		right.downs = 0;
+		up.downs = 0;
+		down.downs = 0;
 	}
 
 	{
@@ -187,11 +295,10 @@ void PlayMode::update(float elapsed) {
 		update_ship(elapsed);
 	}
 
-	//reset button press counters:
-	left.downs = 0;
-	right.downs = 0;
-	up.downs = 0;
-	down.downs = 0;
+	{
+		// Pickup logic
+		update_pickups();
+	}
 }
 
 void PlayMode::draw(glm::uvec2 const &drawable_size) {
@@ -239,17 +346,11 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		      human_spacecraft_tiles_x, human_spacecraft_tiles_y,
 		      glm::ivec2(int32_t(ship.ship_at.x), int32_t(ship.ship_at.y)));
 
-		place(star_small_tile_index, star_small_tile_palettes.data(),
-		      star_small_tiles_x, star_small_tiles_y, glm::ivec2(24, 208));
-
-		place(star_bright_tile_index, star_bright_tile_palettes.data(),
-		      star_bright_tiles_x, star_bright_tiles_y, glm::ivec2(208, 200));
-
-		place(meteorite_small_tile_index, meteorite_small_tile_palettes.data(),
-		      meteorite_small_tiles_x, meteorite_small_tiles_y, glm::ivec2(40, 128));
-
-		place(meteorite_large_tile_index, meteorite_large_tile_palettes.data(),
-		      meteorite_large_tiles_x, meteorite_large_tiles_y, glm::ivec2(192, 120));
+		for (auto const &p : pickups) {
+			PickupArt art = art_for(p.kind);
+			place(art.tile_index, art.palettes, art.tiles_x, art.tiles_y,
+			      glm::ivec2(int32_t(p.at.x), int32_t(p.at.y)));
+		}
 	}
 
 	//--- actually draw ---

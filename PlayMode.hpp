@@ -3,6 +3,7 @@
 
 #include <glm/glm.hpp>
 
+#include <array>
 #include <vector>
 #include <deque>
 #include <random>
@@ -59,6 +60,27 @@ struct PlayMode : Mode {
 		void speed_down() { ship_speed = Speed::Normal; return; }
 	} ship;
 
+	//----- pickups -----
+	//fixed composition: 2 small stars, 1 bright star, 6 small meteorites, 1 large
+	// kind is set once in the constructor and never changes, so the sprite cost is constant
+	struct Pickup {
+		enum class Kind : uint8_t { SmallStar, BrightStar, SmallMeteorite, LargeMeteorite };
+		Kind kind = Kind::SmallStar;
+		glm::vec2 at = glm::vec2(0.0f);
+	};
+	std::array< Pickup, 10 > pickups;
+
+	//art + size for a pickup kind, looked up from asset.hpp
+	struct PickupArt {
+		uint8_t tile_index = 0;
+		uint8_t const *palettes = nullptr;
+		uint32_t tiles_x = 0;
+		uint32_t tiles_y = 0;
+		float width = 0.0f;
+		float height = 0.0f;
+	};
+	static PickupArt art_for(Pickup::Kind kind);
+
 	//deterministic
 	// The answer to life the universe and everything: 42
 	std::mt19937 mt = std::mt19937(0x2a);
@@ -67,6 +89,9 @@ struct PlayMode : Mode {
 	static float get_speed(Speed speed);
 	static void clamp_to_screen(glm::vec2 &at, float w, float h);
 	void update_ship(float elapsed);
+	void respawn(Pickup &p);
+	void apply_pickup(Pickup::Kind kind, Speed &speed);
+	void update_pickups();
 
 	//----- drawing handled by PPU466 -----
 
