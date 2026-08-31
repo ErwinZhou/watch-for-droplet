@@ -417,14 +417,14 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		uint32_t next_sprite = 0;
 
-		//an asset wider or taller than 8px needs one sprite per 8x8 tile;
-		// tiles were generated row-major with ty = 0 at the BOTTOM.
-		auto place = [&](uint8_t base_tile, uint8_t const *tile_palettes,
-		                 uint32_t tiles_x, uint32_t tiles_y, glm::ivec2 const &at) {
+		//an asset wider or taller than 8px needs one sprite per 8x8 tile
+		// tiles were generated row-major with ty = 0 at the BOTTOM
+		auto place = [this, &next_sprite](uint8_t base_tile, uint8_t const *tile_palettes,
+		                                  uint32_t tiles_x, uint32_t tiles_y, glm::ivec2 const &at) {
+			if (next_sprite + tiles_x * tiles_y > ppu.sprites.size()) return;
 			for (uint32_t ty = 0; ty < tiles_y; ++ty) {
 				for (uint32_t tx = 0; tx < tiles_x; ++tx) {
 					uint32_t i = tx + tiles_x * ty;
-					assert(next_sprite < ppu.sprites.size() && "ran out of sprite slots.");
 					PPU466::Sprite &sprite = ppu.sprites[next_sprite++];
 					sprite.x = uint8_t(at.x + 8 * int32_t(tx));
 					sprite.y = uint8_t(at.y + 8 * int32_t(ty));
