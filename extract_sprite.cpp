@@ -251,7 +251,7 @@ int main(int argc, char **argv) {
 	{ //background: unlike sprites, this fills ppu.background[] -- a 64x60 grid of
 	  // tile-index + palette-index. Identical 8x8 blocks are deduplicated so a
 	  // 3840-cell map only costs a handful of tile_table slots.
-		const std::string path = "assets/space-earth-background-preview-512-480.png";
+		const std::string path = "assets/background-512-480.png";
 		const uint8_t background_palette = 0;
 
 		glm::uvec2 size;

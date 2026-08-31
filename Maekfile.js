@@ -123,7 +123,7 @@ const asset_pngs = [
 	'assets/bright-star-16-16.png',
 	'assets/meteorite-small-16-16.png',
 	'assets/meteorite-large-24-24.png',
-	'assets/space-earth-background-preview-512-480.png',
+	'assets/background-512-480.png',
 ];
 
 //shared by the game and by extract_sprite:
