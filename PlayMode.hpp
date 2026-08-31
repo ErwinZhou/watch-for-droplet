@@ -43,8 +43,8 @@ struct PlayMode : Mode {
 	struct Spacecraft {
 		glm::vec2 ship_at = glm::vec2(0.0f);
 		Speed ship_speed = Speed::Accelerated;
-		void speed_up(bool all_the_way);
-		void speed_down(bool all_the_way);
+		void speed_up() { ship_speed = Speed::Accelerated; return; }
+		void speed_down() { ship_speed = Speed::Normal; return; }
 	} spacecraft;
 
 

@@ -23,7 +23,7 @@ Here are all the assets I draw with Asprite:
 - [Small stars](assets/small-star-8-8.png) can boost you speed one step from Normal -> Accelerated -> Lightspeed.
 - [Bright stars](assets/bright-star-16-16.png) can boost you directly to Lightspeed, not matter whatever the current speed you are. 
 - You can not go beyond Lightspeed, that's the maximum buff you can get.
-- The above logic applies to the spacecraft as well.
+- The above logic does not apply to spacecraft, it can only be boosted from Normal -> Accelerated.
 2. Meteorites:
 - [Small meteorite](assets/meteorite-small-16-16.png) will slow down your speed one step back: Lightspeed -> Accelerated -> Normal.
 - [Large meteorite](assets/meteorite-large-24-24.png) will slow down your speed two steps directly back to Normal. 

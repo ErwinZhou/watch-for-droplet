@@ -78,17 +78,6 @@ void PlayMode::Player::speed_down(bool all_the_way) {
 	else if (player_speed == Speed::Accelerated) { player_speed = Speed::Normal; }
 }
 
-void PlayMode::Spacecraft::speed_up(bool all_the_way) {
-	if (all_the_way) { ship_speed = Speed::Lightspeed; return; }
-	if (ship_speed == Speed::Normal) { ship_speed = Speed::Accelerated; }
-	else if (ship_speed == Speed::Accelerated) { ship_speed = Speed::Lightspeed; }	
-}
-void PlayMode::Spacecraft::speed_down(bool all_the_way) {
-	if (all_the_way) { ship_speed = Speed::Normal; return; }
-	if (ship_speed == Speed::Lightspeed) { ship_speed = Speed::Accelerated; }
-	else if (ship_speed == Speed::Accelerated) { ship_speed = Speed::Normal; }
-}
-
 //--------------------------------------------------------------
 //main functions
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
