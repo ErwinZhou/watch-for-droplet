@@ -273,7 +273,7 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-	//round is over: freeze everything, draw() shows the result colour.
+	//round is over: freeze everything, draw() shows the result color
 	if (won || lost) {
 		left.downs = right.downs = up.downs = down.downs = 0;
 		return;
