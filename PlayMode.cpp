@@ -33,7 +33,11 @@ PlayMode::PlayMode() {
 		};
 
 		load_tiles(droplet_tile_index,          droplet_tiles.data(),          droplet_tiles.size());
+		droplet.width = droplet_tiles_x * 8;
+		droplet.height = droplet_tiles_y * 8;
 		load_tiles(human_spacecraft_tile_index, human_spacecraft_tiles.data(), human_spacecraft_tiles.size());
+		ship.width = human_spacecraft_tiles_x * 8;
+		ship.height = human_spacecraft_tiles_y * 8;
 		load_tiles(star_small_tile_index,       star_small_tiles.data(),       star_small_tiles.size());
 		load_tiles(star_bright_tile_index,      star_bright_tiles.data(),      star_bright_tiles.size());
 		load_tiles(meteorite_small_tile_index,  meteorite_small_tiles.data(),  meteorite_small_tiles.size());
@@ -68,14 +72,20 @@ float PlayMode::get_speed(Speed speed) {
 	}
 }
 void PlayMode::Player::speed_up(bool all_the_way) {
-	if (all_the_way) { player_speed = Speed::Lightspeed; return; }
-	if (player_speed == Speed::Normal) { player_speed = Speed::Accelerated; }
-	else if (player_speed == Speed::Accelerated) { player_speed = Speed::Lightspeed; }
+	if (all_the_way) { droplet_speed = Speed::Lightspeed; return; }
+	if (droplet_speed == Speed::Normal) { droplet_speed = Speed::Accelerated; }
+	else if (droplet_speed == Speed::Accelerated) { droplet_speed = Speed::Lightspeed; }
 }
 void PlayMode::Player::speed_down(bool all_the_way) {
-	if (all_the_way) { player_speed = Speed::Normal; return; }
-	if (player_speed == Speed::Lightspeed) { player_speed = Speed::Accelerated; }
-	else if (player_speed == Speed::Accelerated) { player_speed = Speed::Normal; }
+	if (all_the_way) { droplet_speed = Speed::Normal; return; }
+	if (droplet_speed == Speed::Lightspeed) { droplet_speed = Speed::Accelerated; }
+	else if (droplet_speed == Speed::Accelerated) { droplet_speed = Speed::Normal; }
+}
+
+void PlayMode::clamp_to_screen(glm::vec2 &at, float w, float h) {
+	//avoid teleportation across screens, cap them there
+	at.x = std::max(0.0f, std::min(float(PPU466::BackgroundWidth) - w, at.x));
+	at.y = std::max(0.0f, std::min(float(PPU466::BackgroundHeight) - h, at.y));
 }
 
 //--------------------------------------------------------------
@@ -123,11 +133,12 @@ void PlayMode::update(float elapsed) {
 
 	{
 		//Player logic
-		float player_speed = get_speed(droplet.player_speed);
-		if (left.pressed) droplet.player_at.x -= player_speed * elapsed;
-		if (right.pressed) droplet.player_at.x += player_speed * elapsed;
-		if (down.pressed) droplet.player_at.y -= player_speed * elapsed;
-		if (up.pressed) droplet.player_at.y += player_speed * elapsed;
+		float player_speed = get_speed(droplet.droplet_speed);
+		if (left.pressed) droplet.droplet_at.x -= player_speed * elapsed;
+		if (right.pressed) droplet.droplet_at.x += player_speed * elapsed;
+		if (down.pressed) droplet.droplet_at.y -= player_speed * elapsed;
+		if (up.pressed) droplet.droplet_at.y += player_speed * elapsed;
+		clamp_to_screen(droplet.droplet_at, droplet.width, droplet.height);
 	}
 
 	{
@@ -150,8 +161,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 	//background tiles + map were installed once in the constructor; scrolling just moves
 	// the window over them. Half the player's speed, so the world drifts behind the droplet.
 	ppu.background_position = glm::ivec2(
-		int32_t(-0.5f * droplet.player_at.x),
-		int32_t(-0.5f * droplet.player_at.y)
+		int32_t(-0.5f * droplet.droplet_at.x),
+		int32_t(-0.5f * droplet.droplet_at.y)
 	);
 
 	{ //sprites: park all 64 offscreen, then place the ones we want to look at.
@@ -180,7 +191,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 		place(droplet_tile_index, droplet_tile_palettes.data(),
 		      droplet_tiles_x, droplet_tiles_y,
-		      glm::ivec2(int32_t(droplet.player_at.x), int32_t(droplet.player_at.y)));
+		      glm::ivec2(int32_t(droplet.droplet_at.x), int32_t(droplet.droplet_at.y)));
 
 		place(human_spacecraft_tile_index, human_spacecraft_tile_palettes.data(),
 		      human_spacecraft_tiles_x, human_spacecraft_tiles_y, glm::ivec2(96, 64));

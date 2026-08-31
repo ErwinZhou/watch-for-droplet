@@ -33,8 +33,10 @@ struct PlayMode : Mode {
 		Lightspeed
 	};
 	struct Player {
-		glm::vec2 player_at = glm::vec2(60.0f, 150.0f);
-		Speed player_speed = Speed::Normal;
+		glm::vec2 droplet_at = glm::vec2(60.0f, 150.0f);
+		Speed droplet_speed = Speed::Normal;
+		float width = 0.0f;
+		float height = 0.0f;
 		void speed_up(bool all_the_way);
 		void speed_down(bool all_the_way);
 	} droplet;
@@ -43,13 +45,16 @@ struct PlayMode : Mode {
 	struct Spacecraft {
 		glm::vec2 ship_at = glm::vec2(0.0f);
 		Speed ship_speed = Speed::Accelerated;
+		float width = 0.0f;
+		float height = 0.0f;
 		void speed_up() { ship_speed = Speed::Accelerated; return; }
 		void speed_down() { ship_speed = Speed::Normal; return; }
-	} spacecraft;
+	} ship;
 
 
 	//----- game helper functions to update states
 	static float get_speed(Speed speed);
+	static void clamp_to_screen(glm::vec2 &at, float w, float h);
 
 	//----- drawing handled by PPU466 -----
 
