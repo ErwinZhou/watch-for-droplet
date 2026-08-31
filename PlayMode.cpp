@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <random>
 
 PlayMode::PlayMode() {
@@ -85,6 +86,43 @@ void PlayMode::Player::speed_down(bool all_the_way) {
 	else if (droplet_speed == Speed::Accelerated) { droplet_speed = Speed::Normal; }
 }
 
+void PlayMode::update_ship(float elapsed) {
+	//difficulty can be changed here: 
+	// smaller jitter = smarter evasion, smaller hold = more reactive.
+	constexpr float JitterRadians = 0.6f;
+	constexpr float DirectionHold = 0.4f;
+
+	//hold a direction for a while
+	// re-rolling every frame would just vibrate in place
+	ship.direction_timer -= elapsed;
+	if (ship.direction_timer <= 0.0f) {
+		//flee: point away from the droplet, then jitter so it is not perfectly predictable
+		glm::vec2 ship_center    = ship.ship_at + glm::vec2(ship.width, ship.height) * 0.5f;
+		glm::vec2 droplet_center = droplet.droplet_at + glm::vec2(droplet.width, droplet.height) * 0.5f;
+		glm::vec2 away = ship_center - droplet_center;
+		if (glm::length(away) < 0.001f) away = glm::vec2(1.0f, 0.0f);
+		away = glm::normalize(away);
+
+		float t = float(mt() % 1001) / 1000.0f; //0..1
+		float angle = (t * 2.0f - 1.0f) * JitterRadians;
+		float c = std::cos(angle), s = std::sin(angle);
+		ship.direction = glm::vec2(away.x * c - away.y * s, away.x * s + away.y * c);
+
+		ship.direction_timer = DirectionHold;
+	}
+
+	ship.ship_at += ship.direction * get_speed(ship.ship_speed) * elapsed;
+
+	//clamp, and stop the direction pushing further into the wall so the ship slides
+	// along it instead of stopping dead (reflecting would send it back at the player).
+	float max_x = float(PPU466::ScreenWidth) - ship.width;
+	float max_y = float(PPU466::ScreenHeight) - ship.height;
+	if (ship.ship_at.x < 0.0f)  { ship.ship_at.x = 0.0f;  ship.direction.x = std::max(0.0f, ship.direction.x); }
+	if (ship.ship_at.x > max_x) { ship.ship_at.x = max_x; ship.direction.x = std::min(0.0f, ship.direction.x); }
+	if (ship.ship_at.y < 0.0f)  { ship.ship_at.y = 0.0f;  ship.direction.y = std::max(0.0f, ship.direction.y); }
+	if (ship.ship_at.y > max_y) { ship.ship_at.y = max_y; ship.direction.y = std::min(0.0f, ship.direction.y); }
+}
+
 void PlayMode::clamp_to_screen(glm::vec2 &at, float w, float h) {
 	//avoid teleportation by avoid player/npc wrapping up
 	at.x = std::max(0.0f, std::min(float(PPU466::ScreenWidth)  - w, at.x));
@@ -146,6 +184,7 @@ void PlayMode::update(float elapsed) {
 
 	{
 		// Spacecraft logic
+		update_ship(elapsed);
 	}
 
 	//reset button press counters:
@@ -197,7 +236,8 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		      glm::ivec2(int32_t(droplet.droplet_at.x), int32_t(droplet.droplet_at.y)));
 
 		place(human_spacecraft_tile_index, human_spacecraft_tile_palettes.data(),
-		      human_spacecraft_tiles_x, human_spacecraft_tiles_y, glm::ivec2(96, 64));
+		      human_spacecraft_tiles_x, human_spacecraft_tiles_y,
+		      glm::ivec2(int32_t(ship.ship_at.x), int32_t(ship.ship_at.y)));
 
 		place(star_small_tile_index, star_small_tile_palettes.data(),
 		      star_small_tiles_x, star_small_tiles_y, glm::ivec2(24, 208));

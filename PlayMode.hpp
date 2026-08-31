@@ -5,6 +5,7 @@
 
 #include <vector>
 #include <deque>
+#include <random>
 
 struct PlayMode : Mode {
 	PlayMode();
@@ -48,18 +49,24 @@ struct PlayMode : Mode {
 
 	//----- NPC state -----
 	struct Spacecraft {
-		glm::vec2 ship_at = glm::vec2(0.0f);
+		glm::vec2 ship_at = glm::vec2(180.0f, 40.0f);
 		Speed ship_speed = Speed::Accelerated;
 		float width = 0.0f;
 		float height = 0.0f;
+		glm::vec2 direction = glm::vec2(1.0f, 0.0f); //unit vector
+		float direction_timer = 0.0f; //seconds left before re-rolling direction
 		void speed_up() { ship_speed = Speed::Accelerated; return; }
 		void speed_down() { ship_speed = Speed::Normal; return; }
 	} ship;
 
+	//deterministic
+	// The answer to life the universe and everything: 42
+	std::mt19937 mt = std::mt19937(0x2a);
 
 	//----- game helper functions to update states
 	static float get_speed(Speed speed);
 	static void clamp_to_screen(glm::vec2 &at, float w, float h);
+	void update_ship(float elapsed);
 
 	//----- drawing handled by PPU466 -----
 
