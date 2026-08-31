@@ -51,6 +51,46 @@ PlayMode::PlayMode() {
 PlayMode::~PlayMode() {
 }
 
+//--------------------------------------------------------------
+//helper functions
+float PlayMode::get_speed(Speed speed) {
+	switch (speed)
+	{
+	case Speed::Normal:
+		return 40.0f;
+	case Speed::Accelerated:
+		return 75.0f;
+	case Speed::Lightspeed:
+		return 120.0f;
+	default:
+		assert("Speed undefined.");
+		break;
+	}
+}
+void PlayMode::Player::speed_up(bool all_the_way) {
+	if (all_the_way) { player_speed = Speed::Lightspeed; return; }
+	if (player_speed == Speed::Normal) { player_speed = Speed::Accelerated; }
+	else if (player_speed == Speed::Accelerated) { player_speed = Speed::Lightspeed; }
+}
+void PlayMode::Player::speed_down(bool all_the_way) {
+	if (all_the_way) { player_speed = Speed::Normal; return; }
+	if (player_speed == Speed::Lightspeed) { player_speed = Speed::Accelerated; }
+	else if (player_speed == Speed::Accelerated) { player_speed = Speed::Normal; }
+}
+
+void PlayMode::Spacecraft::speed_up(bool all_the_way) {
+	if (all_the_way) { ship_speed = Speed::Lightspeed; return; }
+	if (ship_speed == Speed::Normal) { ship_speed = Speed::Accelerated; }
+	else if (ship_speed == Speed::Accelerated) { ship_speed = Speed::Lightspeed; }	
+}
+void PlayMode::Spacecraft::speed_down(bool all_the_way) {
+	if (all_the_way) { ship_speed = Speed::Normal; return; }
+	if (ship_speed == Speed::Lightspeed) { ship_speed = Speed::Accelerated; }
+	else if (ship_speed == Speed::Accelerated) { ship_speed = Speed::Normal; }
+}
+
+//--------------------------------------------------------------
+//main functions
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_EVENT_KEY_DOWN) {
@@ -91,13 +131,19 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
-	//no game logic yet -- arrow keys just move the droplet so the art can be looked at.
 
-	constexpr float PlayerSpeed = 30.0f;
-	if (left.pressed) droplet.player_at.x -= PlayerSpeed * elapsed;
-	if (right.pressed) droplet.player_at.x += PlayerSpeed * elapsed;
-	if (down.pressed) droplet.player_at.y -= PlayerSpeed * elapsed;
-	if (up.pressed) droplet.player_at.y += PlayerSpeed * elapsed;
+	{
+		//Player logic
+		float player_speed = get_speed(droplet.player_speed);
+		if (left.pressed) droplet.player_at.x -= player_speed * elapsed;
+		if (right.pressed) droplet.player_at.x += player_speed * elapsed;
+		if (down.pressed) droplet.player_at.y -= player_speed * elapsed;
+		if (up.pressed) droplet.player_at.y += player_speed * elapsed;
+	}
+
+	{
+		// Spacecraft logic
+	}
 
 	//reset button press counters:
 	left.downs = 0;
