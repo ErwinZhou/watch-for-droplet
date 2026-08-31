@@ -107,6 +107,10 @@ void PlayMode::update_ship(float elapsed) {
 	constexpr float JitterRadians = 0.6f;
 	constexpr float DirectionHold = 0.4f;
 
+	//the ship wraps, so the arena is more difficult for the droplets
+	float max_x = float(PPU466::ScreenWidth) - ship.width;
+	float max_y = float(PPU466::ScreenHeight) - ship.height;
+
 	//hold a direction for a while
 	// re-rolling every frame would just vibrate in place
 	ship.direction_timer -= elapsed;
@@ -114,7 +118,15 @@ void PlayMode::update_ship(float elapsed) {
 		//flee: point away from the droplet, then jitter so it is not perfectly predictable
 		glm::vec2 ship_center    = ship.ship_at + glm::vec2(ship.width, ship.height) * 0.5f;
 		glm::vec2 droplet_center = droplet.droplet_at + glm::vec2(droplet.width, droplet.height) * 0.5f;
+
+		//shortest way round: straight-line distance would send the ship fleeing into the
+		// player through the seam. Forward and backward are symmetric on a torus.
 		glm::vec2 away = ship_center - droplet_center;
+		if (away.x >  max_x * 0.5f) away.x -= max_x;
+		if (away.x < -max_x * 0.5f) away.x += max_x;
+		if (away.y >  max_y * 0.5f) away.y -= max_y;
+		if (away.y < -max_y * 0.5f) away.y += max_y;
+
 		if (glm::length(away) < 0.001f) away = glm::vec2(1.0f, 0.0f);
 		away = glm::normalize(away);
 
@@ -128,14 +140,13 @@ void PlayMode::update_ship(float elapsed) {
 
 	ship.ship_at += ship.direction * get_speed(ship.ship_speed) * elapsed;
 
-	//clamp, and stop the direction pushing further into the wall so the ship slides
-	// along it instead of stopping dead (reflecting would send it back at the player).
-	float max_x = float(PPU466::ScreenWidth) - ship.width;
-	float max_y = float(PPU466::ScreenHeight) - ship.height;
-	if (ship.ship_at.x < 0.0f)  { ship.ship_at.x = 0.0f;  ship.direction.x = std::max(0.0f, ship.direction.x); }
-	if (ship.ship_at.x > max_x) { ship.ship_at.x = max_x; ship.direction.x = std::min(0.0f, ship.direction.x); }
-	if (ship.ship_at.y < 0.0f)  { ship.ship_at.y = 0.0f;  ship.direction.y = std::max(0.0f, ship.direction.y); }
-	if (ship.ship_at.y > max_y) { ship.ship_at.y = max_y; ship.direction.y = std::min(0.0f, ship.direction.y); }
+	//wrap instead of clamping: corners were the real difficulty ceiling, since the ship
+	// could only run 208px before running out of room no matter how fast it was.
+	// += / -= keeps the overshoot so motion stays continuous
+	if (ship.ship_at.x < 0.0f)  ship.ship_at.x += max_x;
+	if (ship.ship_at.x > max_x) ship.ship_at.x -= max_x;
+	if (ship.ship_at.y < 0.0f)  ship.ship_at.y += max_y;
+	if (ship.ship_at.y > max_y) ship.ship_at.y -= max_y;
 }
 
 PlayMode::PickupArt PlayMode::art_for(Pickup::Kind kind) {

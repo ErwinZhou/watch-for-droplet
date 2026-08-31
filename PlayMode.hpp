@@ -82,8 +82,12 @@ struct PlayMode : Mode {
 	static PickupArt art_for(Pickup::Kind kind);
 
 	//----- round state -----
+	//a round is a 60s score run, catch as many ships as possible!
 	static constexpr float RoundSeconds = 60.0f;
+	static constexpr float CatchFlashSeconds = 0.2f;
 	float time_remaining = RoundSeconds;
+	uint32_t ships_caught = 0;
+	float catch_flash = 0.0f; //seconds of green tint left after a catch
 	bool won = false;
 	bool lost = false;
 
@@ -96,6 +100,8 @@ struct PlayMode : Mode {
 	static void clamp_to_screen(glm::vec2 &at, float w, float h);
 	void update_ship(float elapsed);
 	void respawn(Pickup &p);
+	void respawn_ship();
+	void reset_round();
 	void apply_pickup(Pickup::Kind kind, Speed &speed);
 	void update_pickups();
 
