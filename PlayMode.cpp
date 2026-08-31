@@ -60,8 +60,10 @@ PlayMode::PlayMode() {
 		for (uint32_t n = 0; n < 6; ++n) pickups[i++].kind = Pickup::Kind::SmallMeteorite;
 		pickups[i++].kind = Pickup::Kind::LargeMeteorite;
 		assert(i == pickups.size() && "composition fills the pool exactly.");
+	}
 
-		for (auto &p : pickups) respawn(p);
+	{ //positions, timer and score: shared with the R restart path.
+		reset_round();
 	}
 
 	{ //background: the generated map is already in ppu.background's packed format.
@@ -195,6 +197,42 @@ void PlayMode::respawn(Pickup &p) {
 	//gave up: last position stands.
 }
 
+void PlayMode::respawn_ship() {
+	float max_x = float(PPU466::ScreenWidth) - ship.width;
+	float max_y = float(PPU466::ScreenHeight) - ship.height;
+
+	//a fresh ship: don't inherit the speed the last one was slowed to.
+	ship.ship_speed = Speed::Accelerated;
+	ship.direction_timer = 0.0f;
+
+	//start well away from the droplet to not be caught
+	constexpr float ClearRadius = 80.0f;
+	for (uint32_t tries = 0; tries < 32; ++tries) {
+		ship.ship_at.x = float(mt() % (uint32_t(max_x) + 1));
+		ship.ship_at.y = float(mt() % (uint32_t(max_y) + 1));
+		glm::vec2 d = (ship.ship_at + glm::vec2(ship.width, ship.height) * 0.5f)
+		            - (droplet.droplet_at + glm::vec2(droplet.width, droplet.height) * 0.5f);
+		if (glm::length(d) > ClearRadius) return;
+	}
+	//gave up: last position stands.
+}
+
+void PlayMode::reset_round() {
+	//the constructor calls this too
+	// being called at load and restart on 'R'
+	droplet.droplet_at = glm::vec2(60.0f, 150.0f);
+	droplet.droplet_speed = Speed::Normal;
+
+	respawn_ship();
+	for (auto &p : pickups) respawn(p);
+
+	time_remaining = RoundSeconds;
+	ships_caught = 0;
+	catch_flash = 0.0f;
+	won = false;
+	lost = false;
+}
+
 void PlayMode::apply_pickup(Pickup::Kind kind, Speed &speed) {
 	//ship methods cap at Accelerated; player methods do not.
 	bool is_player = (&speed == &droplet.droplet_speed);
@@ -247,6 +285,11 @@ void PlayMode::clamp_to_screen(glm::vec2 &at, float w, float h) {
 bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size) {
 
 	if (evt.type == SDL_EVENT_KEY_DOWN) {
+		//R restarts, but only once the round is over: a mis-key must not wipe a good run
+		if (evt.key.key == SDLK_R) {
+			if (won || lost) reset_round();
+			return true;
+		}
 		if (evt.key.key == SDLK_LEFT) {
 			left.downs += 1;
 			left.pressed = true;
@@ -317,16 +360,20 @@ void PlayMode::update(float elapsed) {
 	}
 
 	{
-		// Win: catch the ship. Lose: run out of time.
+		// Catch a ship: score it, flash, and send out a fresh one. Only the timer ends the round.
 		if (overlap(droplet.droplet_at, droplet.width, droplet.height,
 		            ship.ship_at, ship.width, ship.height)) {
-			won = true;
+			++ships_caught;
+			catch_flash = CatchFlashSeconds;
+			respawn_ship();
 		}
+
+		if (catch_flash > 0.0f) catch_flash -= elapsed;
 
 		time_remaining -= elapsed;
 		if (time_remaining <= 0.0f) {
 			time_remaining = 0.0f;
-			if (!won) lost = true;
+			if (ships_caught > 0) won = true; else lost = true;
 		}
 	}
 }
@@ -338,7 +385,7 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 
 	//round result: re-tint the background palette. background_color alone would not show,
 	// since every background tile is fully opaque and the map covers the whole grid.
-	if (won) {
+	if (won || catch_flash > 0.0f) {
 		ppu.palette_table[0] = {
 			glm::u8vec4(0x06, 0x2a, 0x14, 0xff),
 			glm::u8vec4(0x7d, 0xfc, 0xa0, 0xff),
@@ -395,10 +442,28 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 		      human_spacecraft_tiles_x, human_spacecraft_tiles_y,
 		      glm::ivec2(int32_t(ship.ship_at.x), int32_t(ship.ship_at.y)));
 
-		for (auto const &p : pickups) {
-			PickupArt art = art_for(p.kind);
-			place(art.tile_index, art.palettes, art.tiles_x, art.tiles_y,
-			      glm::ivec2(int32_t(p.at.x), int32_t(p.at.y)));
+		if (!won && !lost) {
+			for (auto const &p : pickups) {
+				PickupArt art = art_for(p.kind);
+				place(art.tile_index, art.palettes, art.tiles_x, art.tiles_y,
+				      glm::ivec2(int32_t(p.at.x), int32_t(p.at.y)));
+			}
+		} else {
+			//score, shown the stars only here: the round is frozen
+			constexpr int32_t PipSize = 10; //8px tile + 2px gap
+			constexpr int32_t PipLeft = 8;
+			constexpr int32_t PipTop  = int32_t(PPU466::ScreenHeight) - 16;
+			int32_t per_row = (int32_t(PPU466::ScreenWidth) - 2 * PipLeft) / PipSize;
+
+			for (uint32_t n = 0; n < ships_caught; ++n) {
+				int32_t col = int32_t(n) % per_row;
+				int32_t row = int32_t(n) / per_row;
+				int32_t y = PipTop - row * PipSize;
+				if (y < 0) break; //ran off the bottom; stop drawing
+				place(star_small_tile_index, star_small_tile_palettes.data(),
+				      star_small_tiles_x, star_small_tiles_y,
+				      glm::ivec2(PipLeft + col * PipSize, y));
+			}
 		}
 	}
 
