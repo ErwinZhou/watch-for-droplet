@@ -19,8 +19,12 @@ inline void gl_errors(std::string const &where) {
 		CHECK( GL_INVALID_OPERATION )
 		CHECK( GL_INVALID_FRAMEBUFFER_OPERATION )
 		CHECK( GL_OUT_OF_MEMORY )
+#ifndef __EMSCRIPTEN__
+		//GLES3 (and therefore WebGL2) has no stack-based GL state, so these two
+		//enums do not exist there -- naming them is a compile error, not a warning:
 		CHECK( GL_STACK_UNDERFLOW )
 		CHECK( GL_STACK_OVERFLOW )
+#endif
 		{
 			std::cerr << "WARNING: gl error '" << err << "'" << std::endl;
 		}

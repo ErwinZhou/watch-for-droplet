@@ -295,7 +295,14 @@ void PPU466::draw(glm::uvec2 const &drawable_size) const {
 PPUTileProgram::PPUTileProgram() {
 	program = gl_compile_program(
 		//vertex shader:
+		//WebGL2 is GLES 3.0 and rejects desktop GLSL version strings; everything
+		//else in these shaders is already valid GLES3 as written:
+#ifdef __EMSCRIPTEN__
+		"#version 300 es\n"
+		"precision highp float;\n"
+#else
 		"#version 330\n"
+#endif
 		"uniform mat4 OBJECT_TO_CLIP;\n"
 		"in vec4 Position;\n"
 		"in ivec2 TileCoord;\n"
@@ -309,7 +316,15 @@ PPUTileProgram::PPUTileProgram() {
 		"}\n"
 	,
 		//fragment shader:
+#ifdef __EMSCRIPTEN__
+		"#version 300 es\n"
+		"precision highp float;\n"
+		"precision highp int;\n"
+		"precision highp usampler2D;\n"
+		"precision highp sampler2D;\n"
+#else
 		"#version 330\n"
+#endif
 		"uniform usampler2D TILE_TABLE;\n"
 		"uniform sampler2D PALETTE_TABLE;\n"
 		"in vec2 tileCoord;\n"
