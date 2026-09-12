@@ -295,8 +295,9 @@ void PPU466::draw(glm::uvec2 const &drawable_size) const {
 PPUTileProgram::PPUTileProgram() {
 	program = gl_compile_program(
 		//vertex shader:
-		//WebGL2 is GLES 3.0 and rejects desktop GLSL version strings; everything
-		//else in these shaders is already valid GLES3 as written:
+		//WebGL2 is GLES 3.0: it rejects desktop GLSL version strings, requires explicit
+		//precision for float/int/samplers, and has no implicit int -> float conversion
+		//(see the vec2() cast below):
 #ifdef __EMSCRIPTEN__
 		"#version 300 es\n"
 		"precision highp float;\n"
@@ -311,7 +312,7 @@ PPUTileProgram::PPUTileProgram() {
 		"flat out int palette;\n"
 		"void main() {\n"
 		"	gl_Position = OBJECT_TO_CLIP * Position;\n"
-		"	tileCoord = TileCoord;\n"
+		"	tileCoord = vec2(TileCoord);\n" //explicit: GLSL ES 300 has no implicit ivec2 -> vec2
 		"	palette = Palette;\n"
 		"}\n"
 	,
@@ -405,7 +406,8 @@ PPUDataStream::PPUDataStream() {
 	glVertexAttribIPointer(
 		tile_program->Palette_int, //attribute
 		1, //size
-		GL_UNSIGNED_INT, //type
+		GL_INT, //type -- must match: the shader says 'in int', the struct field is int32_t.
+		        //WebGL2 rejects the int/uint mismatch that desktop drivers tolerate
 		sizeof(Vertex), //stride
 		(GLbyte *)0 + offsetof(Vertex, Palette) //offset
 	);
