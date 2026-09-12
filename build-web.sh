@@ -27,6 +27,8 @@ mkdir -p web/dist
 #   load_save_png.cpp -- only the PrintScreen handler used it, and that is #ifdef'd out
 #   data_path.cpp   -- has an #error for unknown OS, and nothing in the game calls data_path()
 # em++ rather than emcc: emcc links without libc++ (same distinction as clang vs clang++).
+# -O2 strips every newline from the generated html/js; MINIFY_HTML=0 and -g2 keep both
+# readable (-g2 also keeps js function names). Neither affects the wasm's speed.
 em++ \
 	PlayMode.cpp \
 	PPU466.cpp \
@@ -39,8 +41,13 @@ em++ \
 	-sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 \
 	-sALLOW_MEMORY_GROWTH=1 \
 	-O2 -std=c++20 -Wall \
+	-sMINIFY_HTML=0 \
+	-g2 \
 	--shell-file web/shell.html \
 	-o web/dist/droplet.html
+
+# the page shows a screenshot, so it has to sit next to droplet.html:
+cp screenshots/screenshot-win.png web/dist/
 
 echo ""
 echo "Built:"
