@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Watch Out for The Droplet!</title>
+<style>
+	/* palette copied from the portfolio's src/styles/global.css */
+	:root {
+		--bg: #e9f3f9;
+		--ink: #12202a;
+		--muted: #4f6b7a;
+		--accent: #3f84b3;
+		--line: #cfe1ec;
+		--surface: #dcedf5;
+		--sans: 'Hanken Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+		--mono: 'JetBrains Mono Variable', ui-monospace, 'SFMono-Regular', monospace;
+	}
+	body {
+		margin: 0;
+		padding: 2rem 1rem;
+		background: var(--bg);
+		color: var(--ink);
+		font-family: var(--sans);
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 1rem;
+	}
+	h1 { margin: 0; font-size: 1.4rem; font-weight: 600; letter-spacing: -0.01em; }
+	#canvas {
+		display: block;
+		width: 100%;
+		max-width: 520px;   /* the size main.cpp asks SDL for: 2*256+8 */
+		height: auto;
+		background: #000;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		/* the PPU output is 256x240; keep the pixels crisp when scaled up: */
+		image-rendering: pixelated;
+		outline: none;
+	}
+	#status {
+		font-family: var(--mono);
+		font-size: 0.8rem;
+		color: var(--muted);
+		min-height: 1.2em;
+	}
+	.controls {
+		max-width: 520px;
+		font-size: 0.9rem;
+		color: var(--muted);
+		line-height: 1.6;
+	}
+	.controls blockquote {
+		margin: 0;
+		font-style: italic;
+		font-size: 1.05rem;
+		color: var(--ink);
+		border-left: 3px solid var(--accent);
+		padding-left: 0.8rem;
+	}
+	.shot, .shot-small {
+		display: block;
+		height: auto;
+		border: 1px solid var(--line);
+		border-radius: 4px;
+		image-rendering: pixelated;
+	}
+	.shot { width: 100%; max-width: 520px; }
+	.shot-small { width: 100%; max-width: 300px; }
+	.credits, .development {
+		/* width:100% because body is align-items:center, which would otherwise
+		   shrink each block to its own text and leave their left edges ragged */
+		width: 100%;
+		max-width: 520px;
+		font-size: 0.9rem;
+		color: var(--muted);
+		line-height: 1.6;
+	}
+	.credits p, .development p { margin: 0.4em 0; }
+	kbd {
+		font-family: var(--mono);
+		font-size: 0.8em;
+		background: var(--surface);
+		border: 1px solid var(--line);
+		border-bottom-width: 2px;
+		border-radius: 3px;
+		padding: 0.1em 0.4em;
+		color: var(--ink);
+	}
+	a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>Watch Out for The Droplet!</h1>
+
+<canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
+
+<div id="status">Loading…</div>
+
+<div class="controls">
+	<p>You are not a raindrop, you are an invincible alien spacecraft. The Droplet.
+	Use <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> to hunt down those puny humans.
+	Catch as many ships as you can before the 60 seconds run out, then press <kbd>R</kbd> to hunt again.</p>
+	<p>Click the canvas first if the keys do nothing.</p>
+	<blockquote>&ldquo;You are bugs!&rdquo;</blockquote>
+</div>
+
+<img class="shot-small" src="screenshot-win.png" width="1082" height="1070"
+     alt="End screen after a winning round, with one score pip per ship caught">
+
+<div class="development">
+	<p>The game is written in C++ on top of OpenGL, then compiled to WebAssembly and embedded in
+	the browser with HTML and JavaScript. The whole idea is to build a game, asset pipeline included,
+	for a display as constrained as the <a href="https://www.nesdev.org/wiki/PPU">Nintendo
+	Entertainment System's PPU</a>: 8x8 tiles, four colours per tile, and 64 sprites on screen.</p>
+	<p>Source code on <a href="https://github.com/ErwinZhou/watch-for-droplet">GitHub</a>.</p>
+</div>
+
+<div class="credits">
+	<p>Inspired by <a href="https://www.3body.com/">The Three-Body Problem II: The Dark Forest</a>
+	by <a href="https://en.wikipedia.org/wiki/Liu_Cixin">Cixin Liu</a>.</p>
+	<p>Built with <a href="https://github.com/ErwinZhou/watch-for-droplet/blob/main/NEST.md">NEST</a>.</p>
+	<p>All sprites and the background were drawn in <a href="https://www.aseprite.org/">Aseprite</a>.</p>
+</div>
+
+<script>
+	var statusElement = document.getElementById('status');
+	var canvasElement = document.getElementById('canvas');
+
+	var Module = {
+		canvas: canvasElement,
+		print: function (text) { console.log(text); },
+		printErr: function (text) { console.error(text); },
+		setStatus: function (text) {
+			//emscripten calls this with '' once the wasm is running:
+			statusElement.textContent = text;
+			if (text === '') statusElement.style.display = 'none';
+		},
+	};
+
+	//the arrow keys scroll the page by default, which fights the game:
+	window.addEventListener('keydown', function (e) {
+		if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].indexOf(e.key) !== -1) {
+			e.preventDefault();
+		}
+	}, false);
+
+	//SDL reads keys from the focused element, so hand it focus without a click:
+	canvasElement.addEventListener('click', function () { canvasElement.focus(); });
+	window.addEventListener('load', function () { canvasElement.focus(); });
+</script>
+
+<script async type="text/javascript" src="droplet.js"></script>
+
+</body>
+</html>

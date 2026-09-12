@@ -17,6 +17,15 @@
  *
  */
 
+#ifdef __EMSCRIPTEN__
+
+//Emscripten links GL entry points directly -- there is nothing to look up, and the
+//prototypes below would collide with the ones GLES3/gl3.h declares. GL.cpp is left
+//out of the web build for the same reason.
+#include <GLES3/gl3.h>
+
+#else
+
 void init_GL(); //will throw on failure.
 
 extern "C" {
@@ -1277,3 +1286,5 @@ GLAPI void (APIENTRYFP glVertexAttribP4ui) (GLuint index, GLenum type, GLboolean
 GLAPI void (APIENTRYFP glVertexAttribP4uiv) (GLuint index, GLenum type, GLboolean normalized, const GLuint *value);
 
 }
+
+#endif //__EMSCRIPTEN__
